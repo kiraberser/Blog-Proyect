@@ -15,9 +15,12 @@ import os
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY')
+app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b' #os.environ.get('FLASK_KEY')
+
 ckeditor = CKEditor(app)
 Bootstrap5(app)
+
+
 
 # TODO: Configure Flask-Login
 login_manager = LoginManager()
@@ -25,7 +28,10 @@ login_manager.init_app(app)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.get_or_404(User, user_id)
+    try:
+        return db.get_or_404(User, user_id)
+    except Exception:
+        pass
 
 gravatar = Gravatar(app,
                     size=100,
@@ -41,10 +47,11 @@ gravatar = Gravatar(app,
 class Base(DeclarativeBase):
     pass
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", "sqlite:///posts.db")
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///posts.db" #os.environ.get("DB_URI", "sqlite:///posts.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
 
 # CONFIGURE TABLES
 class BlogPost(db.Model):
@@ -103,11 +110,13 @@ def admin_only(f):
 def register():
     form_register = RegisterForm()
     if form_register.validate_on_submit():
-        existing_user = db.session.execute(db.select(User).where(User.email == form_register.email.data)).scalar()
-        if existing_user:
-            flash('This email already exist, please log in')
-            return redirect(url_for('register'))
-        print(form_register.name.data)
+        try:
+            existing_user = db.session.execute(db.select(User).where(User.email == form_register.email.data)).scalar()
+            if existing_user:
+                flash('This email already exist, please log in')
+                return redirect(url_for('register'))
+        except Exception:
+            pass
         try:
             new_user = User(
                 name=form_register.name.data,
@@ -154,9 +163,12 @@ def logout():
 
 @app.route('/')
 def get_all_posts():
-    result = db.session.execute(db.select(BlogPost))
-    posts = result.scalars().all()
-    return render_template("index.html", all_posts=posts)
+    try:
+        result = db.session.execute(db.select(BlogPost))
+        posts = result.scalars().all()
+        return render_template("index.html", all_posts=posts)
+    except Exception as e:
+        return render_template("index.html")
 
 # TODO: Allow logged-in users to comment on posts
 @app.route("/post/<int:post_id>", methods=['GET', 'POST'])
