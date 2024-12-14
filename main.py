@@ -10,11 +10,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Integer, String, Text, ForeignKey
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_migrate import Migrate
 import os
 # Import your forms from the forms.py
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
-
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY')
@@ -42,13 +40,11 @@ gravatar = Gravatar(app,
 # CREATE DATABASE
 class Base(DeclarativeBase):
     pass
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", "sqlite:///posts.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(model_class=Base)
-db.init_app(app)
-
-migrate = Migrate(app, db)
+db = SQLAlchemy(app)
 
 # CONFIGURE TABLES
 class BlogPost(db.Model):
