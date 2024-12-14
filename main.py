@@ -116,7 +116,7 @@ def register():
                 flash('This email already exist, please log in')
                 return redirect(url_for('register'))
         except Exception:
-            pass
+            return redirect(url_for('register'))
         try:
             new_user = User(
                 name=form_register.name.data,
@@ -129,8 +129,8 @@ def register():
             )
             db.session.add(new_user)
             db.session.commit()
-
-            return redirect(url_for('get_all_posts'))
+            flash('Registration successful! You can now log in.')
+            return redirect(url_for('register'))
         except IntegrityError:
             db.session.rollback()
             flash('This email already exist, please log in')
@@ -273,4 +273,4 @@ def contact():
     return render_template("contact.html")
 
 if __name__ == "__main__":
-    app.run(debug=False, port=5000)
+    app.run(debug=True, port=5000)
