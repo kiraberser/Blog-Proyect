@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Integer, String, Text, ForeignKey
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_migrate import Migrate
 import os
 # Import your forms from the forms.py
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
@@ -19,8 +20,6 @@ app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY')
 
 ckeditor = CKEditor(app)
 Bootstrap5(app)
-
-
 
 # TODO: Configure Flask-Login
 login_manager = LoginManager()
@@ -47,11 +46,11 @@ gravatar = Gravatar(app,
 class Base(DeclarativeBase):
     pass
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL") #"sqlite:///posts.db"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_PUBLIC_URL", "sqlite:///posts.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-
+migrate = Migrate(app, db)
 
 # CONFIGURE TABLES
 class BlogPost(db.Model):
@@ -273,4 +272,4 @@ def contact():
     return render_template("contact.html")
 
 if __name__ == "__main__":
-    app.run(debug=False, port=os.environ.get('PGPORT'))
+    app.run(debug=False, port=os.environ.get('PGPORT', 5000))
