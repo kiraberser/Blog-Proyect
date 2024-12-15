@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Integer, String, Text, ForeignKey
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_migrate import Migrate
+
 import os
 # Import your forms from the forms.py
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
@@ -47,10 +47,9 @@ class Base(DeclarativeBase):
     pass
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_PUBLIC_URL", "sqlite:///posts.db")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+db = SQLAlchemy(model_class=Base)
+db.init_app(app)
 
 # CONFIGURE TABLES
 class BlogPost(db.Model):
@@ -94,11 +93,10 @@ class Comment(db.Model):
     parent_post: Mapped["BlogPost"] = relationship("BlogPost", back_populates="comments")
 
 # TODO: Create a admin_only decorator 
-ALLOWED_ADMINS_ID = [1, 2]
 def admin_only(f):
     @wraps(f)
     def is_admin(*args, **kwargs):
-        if current_user.is_authenticated and current_user.id not in ALLOWED_ADMINS_ID:
+        if current_user.id != 1:
             return abort(code=403)
         return f(*args, **kwargs)
     return is_admin
@@ -147,7 +145,7 @@ def login():
             flash('Wrong Email')
             return redirect(url_for('login'))
         if check_password_hash(pwhash=get_user.password, password=form_login.password.data):
-            login_user(db.get_or_404(User, get_user.id))
+            login_user(get_user)
             return redirect(url_for('get_all_posts'))
         else:
             flash('Password incorrect')
@@ -166,7 +164,7 @@ def get_all_posts():
         result = db.session.execute(db.select(BlogPost))
         posts = result.scalars().all()
         return render_template("index.html", all_posts=posts)
-    except Exception as e:
+    except Exception:
         return render_template("index.html")
 
 # TODO: Allow logged-in users to comment on posts
@@ -183,7 +181,7 @@ def show_post(post_id):
             )
             db.session.add(new_comment)
             db.session.commit()
-            return render_template("post.html", post=requested_post, form=comment_form)
+            return render_template("post.html", post=requested_post, form=comment_form, current_user=current_user)
         else:
             flash('You need to login to comment')
             return redirect(url_for('login'))
@@ -211,7 +209,7 @@ def add_new_post():
         except Exception:
             flash('This title already exist, change to submit your post')
             return redirect(url_for("add_new_post"))
-    return render_template("make-post.html", form=form)
+    return render_template("make-post.html", form=form, current_user=current_user)
 
 # TODO: Use a decorator so only an admin user can edit a post
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
@@ -233,7 +231,7 @@ def edit_post(post_id):
         post.body = edit_form.body.data
         db.session.commit()
         return redirect(url_for("show_post", post_id=post.id))
-    return render_template("make-post.html", form=edit_form, is_edit=True)
+    return render_template("make-post.html", form=edit_form, is_edit=True, current_user=current_user)
 
 # TODO: Use a decorator so only an admin user can delete a post
 @app.route("/delete/<int:post_id>")
@@ -265,11 +263,11 @@ def delete_user():
 
 @app.route("/about")
 def about():
-    return render_template("about.html")
+    return render_template("about.html", current_user=current_user)
 
 @app.route("/contact")
 def contact():
-    return render_template("contact.html")
+    return render_template("contact.html", current_user=current_user)
 
 if __name__ == "__main__":
     app.run(debug=False, port=os.environ.get('PGPORT', 5000))
