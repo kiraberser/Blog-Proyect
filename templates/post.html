@@ -50,7 +50,7 @@
                   <p>{{ comment.text|safe }}</p>
                   <span class="date sub-text">{{ comment.comment_author.name|safe }}</span>
                 </div>
-                {% if current_user.id in [1, 2] %}
+                {% if current_user.id not in [1, 2] %}
                   <a href="{{ url_for('delete_comment', comment_id=comment.id) }}">✘</a>
                 {% endif %}
               </li>

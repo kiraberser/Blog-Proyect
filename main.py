@@ -100,7 +100,7 @@ class Comment(db.Model):
 def admin_only(f):
     @wraps(f)
     def is_admin(*args, **kwargs):
-        if current_user.id in [1, 2]:
+        if current_user.id not in [1, 2]:
             return abort(code=403)
         return f(*args, **kwargs)
     return is_admin
