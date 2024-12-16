@@ -10,6 +10,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Integer, String, Text, ForeignKey
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_migrate import Migrate
+import smtplib
+
 
 import os
 # Import your forms from the forms.py
@@ -46,10 +49,12 @@ gravatar = Gravatar(app,
 class Base(DeclarativeBase):
     pass
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_PUBLIC_URL", "sqlite:///posts.db")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
+
+migrate = Migrate(app, db)
 
 # CONFIGURE TABLES
 class BlogPost(db.Model):
@@ -96,7 +101,7 @@ class Comment(db.Model):
 def admin_only(f):
     @wraps(f)
     def is_admin(*args, **kwargs):
-        if current_user.id != 1:
+        if current_user.id in [1, 2]:
             return abort(code=403)
         return f(*args, **kwargs)
     return is_admin
@@ -181,7 +186,7 @@ def show_post(post_id):
             )
             db.session.add(new_comment)
             db.session.commit()
-            return render_template("post.html", post=requested_post, form=comment_form, current_user=current_user)
+            return render_template("post.html", post=requested_post, form=comment_form)
         else:
             flash('You need to login to comment')
             return redirect(url_for('login'))
@@ -209,7 +214,7 @@ def add_new_post():
         except Exception:
             flash('This title already exist, change to submit your post')
             return redirect(url_for("add_new_post"))
-    return render_template("make-post.html", form=form, current_user=current_user)
+    return render_template("make-post.html", form=form)
 
 # TODO: Use a decorator so only an admin user can edit a post
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
@@ -231,7 +236,7 @@ def edit_post(post_id):
         post.body = edit_form.body.data
         db.session.commit()
         return redirect(url_for("show_post", post_id=post.id))
-    return render_template("make-post.html", form=edit_form, is_edit=True, current_user=current_user)
+    return render_template("make-post.html", form=edit_form, is_edit=True)
 
 # TODO: Use a decorator so only an admin user can delete a post
 @app.route("/delete/<int:post_id>")
@@ -263,11 +268,26 @@ def delete_user():
 
 @app.route("/about")
 def about():
-    return render_template("about.html", current_user=current_user)
+    return render_template("about.html")
 
-@app.route("/contact")
+MAIL_ADDRESS = os.environ.get("EMAIL_KEY")
+MAIL_APP_PW = os.environ.get("PASSWORD_KEY")
+
+@app.route("/contact", methods=["GET", "POST"])
 def contact():
-    return render_template("contact.html", current_user=current_user)
+    if request.method == "POST":
+        data = request.form
+        send_email(data["name"], data["email"], data["phone"], data["message"])
+        return render_template("contact.html", msg_sent=True)
+    return render_template("contact.html", msg_sent=False)
+
+
+def send_email(name, email, phone, message):
+    email_message = f"Subject:Bienvenido a nuestro blog!\n\nName: {name}\nEmail: {email}\nPhone: {phone}\nMessage:{message}"
+    with smtplib.SMTP("smtp.gmail.com") as connection:
+        connection.starttls()
+        connection.login(MAIL_ADDRESS, MAIL_APP_PW)
+        connection.sendmail(MAIL_ADDRESS, MAIL_APP_PW, email_message)
 
 if __name__ == "__main__":
     app.run(debug=False, port=os.environ.get('PGPORT', 5000))
