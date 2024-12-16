@@ -13,7 +13,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate
 import smtplib
 
-
 import os
 # Import your forms from the forms.py
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
@@ -281,13 +280,12 @@ def contact():
         return render_template("contact.html", msg_sent=True)
     return render_template("contact.html", msg_sent=False)
 
-
 def send_email(name, email, phone, message):
     email_message = f"Subject:Bienvenido a nuestro blog!\n\nName: {name}\nEmail: {email}\nPhone: {phone}\nMessage:{message}"
     with smtplib.SMTP("smtp.gmail.com") as connection:
         connection.starttls()
         connection.login(MAIL_ADDRESS, MAIL_APP_PW)
-        connection.sendmail(MAIL_ADDRESS, MAIL_APP_PW, email_message)
+        connection.sendmail(MAIL_ADDRESS, email, email_message)
 
 if __name__ == "__main__":
     app.run(debug=False, port=os.environ.get('PGPORT', 5000))
